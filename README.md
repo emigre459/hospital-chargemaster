@@ -24,7 +24,7 @@ The file includes the following variables, separated by tabs::
  - **hospital_url** is the human friendly URL, typically the page that includes a link to the data.
  - **hospital_uri** is the unique identifier for the hospital, the hospital name, in lowercase, with spaces replaced with `-`
 
-This represents the original set of hospitals that I obtained from a [compiled list](https://www.cms.gov/newsroom/fact-sheets/fiscal-year-fy-2019-medicare-hospital-inpatient-prospective-payment-system-ipps-and-long-term-acute-0), and is kept
+This represents the original set of hospitals that I obtained from a [compiled list](https://qz.com/1518545/price-lists-for-the-115-biggest-us-hospitals-new-transparency-law/), and is kept
 for the purpose of keeping the record.
 
 ### 2. Organize Data
@@ -96,7 +96,7 @@ In order to make this automated, we will do the following:
 
 ## How do I contribute?
 
-The original dataset was obtained from an article that [listed the top 115 US Hospitals](https://www.cms.gov/newsroom/fact-sheets/fiscal-year-fy-2019-medicare-hospital-inpatient-prospective-payment-system-ipps-and-long-term-acute-0), but this isn't to say that other hospitals aren't
+The original dataset was obtained from an article that [listed the top 115 US Hospitals](https://qz.com/1518545/price-lists-for-the-115-biggest-us-hospitals-new-transparency-law/), but this isn't to say that other hospitals aren't
 important and deserving to belong here! If you want to add a hospital:
 
  1. Add your hospital name, identifier, and (human friendly) link to the [hospitals.tsv](hospitals.tsv) file. If you add a hospital folder and fail to update this file, or update the file and forget or misname the folder an error will be triggered.
