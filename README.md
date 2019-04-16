@@ -22,7 +22,7 @@ The file includes the following variables, separated by tabs::
 
  - **hospital_name** is the human friendly name
  - **hospital_url** is the human friendly URL, typically the page that includes a link to the data.
- - **hospital_uri** is the unique identifier for the hospital, the hospital name, in lowercase, with spaces replaced with `-`
+ - **hospital_id** is the unique identifier for the hospital, the hospital name, in lowercase, with spaces replaced with `-`
 
 This represents the original set of hospitals that I obtained from a [compiled list](https://qz.com/1518545/price-lists-for-the-115-biggest-us-hospitals-new-transparency-law/), and is kept
 for the purpose of keeping the record.
