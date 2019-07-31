@@ -70,7 +70,7 @@ for result in results:
                 hospital = row['HOSPITAL_NAME']
             description_key = 'DESCRIPTION'
             if description_key not in row:
-                description_key = 'DESCRIPION'
+                description_key = 'DESCRIPTION'
             charge_type = charge_types[row['SERVICE_SETTING']]
             idx = df.shape[0] + 1
             entry = [row['CDM'],              # charge code

@@ -83,7 +83,7 @@ for result in results:
         idx = df.shape[0] + 1
         entry = [charge_code,                 # charge code
                  row[1]["CHARGE"],            # price
-                 row[1]['DESCRIPION'],        # description
+                 row[1]['DESCRIPTION'],        # description
                  row[1]["HOSPITAL_NAME"],     # hospital_id
                  result['filename'],
                  charge_type] 

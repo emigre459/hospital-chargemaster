@@ -6,6 +6,7 @@ from glob import glob
 import json
 import datetime
 import pandas
+from tqdm import tqdm # progress bar
 
 here = os.path.dirname(os.path.abspath(__file__))
 folder = os.path.basename(here)
@@ -40,14 +41,14 @@ columns = ['charge_code',
 df = pandas.DataFrame(columns=columns)
 
 # Helper Functions - different formats of XML
-def process_dataroot(content, df, filename):
+def process_dataroot(content, df, hospital_id, filename):
 
     # Hospital name is the key that doesn't start with @
-    for hospital_id in content['dataroot'].keys():
-        if not hospital_id.startswith('@'):
+    for hospital_name in content['dataroot'].keys():
+        if not hospital_name.startswith('@'):            
             break
 
-    for entry in content['dataroot'][hospital_id]:
+    for entry in content['dataroot'][hospital_name]:
         # ed means entry dict
         idx = df.shape[0] + 1
         ed = dict()
@@ -58,6 +59,7 @@ def process_dataroot(content, df, filename):
                 ed['description'] = value
             elif "price" in item.lower():
                 ed['price'] = value
+
         row = [ed['charge_code'], ed['price'], ed['description'], hospital_id, filename, "standard"]
         df.loc[idx, :] = row
 
@@ -77,7 +79,7 @@ def process_workbook(content, df, hospital_id, filename):
 
 
 seen = []
-for result in results:
+for result in tqdm(results):
     filename = os.path.join(latest, result['filename'])
     if not os.path.exists(filename):
         print('%s is not found in latest folder.' % filename)
@@ -99,9 +101,11 @@ for result in results:
             content = xmltodict.parse(filey.read())
 
         if "dataroot" in content:
-            df = process_dataroot(content, df, filename)
+            df = process_dataroot(content, df, result['uri'], 
+                result['filename'])
         elif "Workbook" in content:
-            df = process_workbook(content, df, result['uri'], result['filename'])
+            df = process_workbook(content, df, result['uri'], 
+                result['filename'])
 
     # Save data as we go
     print(df.shape)
