@@ -91,10 +91,10 @@ for result in results:
         price = row[1]['CHARGE'].replace('$','').replace(',','').strip()
         entry = [None,                              # charge code
                  price,                             # price
-                 row[1]["DESCRIPTION"],             # description
-                 hospital_file,                     # hospital_id
-                 result['uri'],
-                 'standard']                        # filename
+                 row[1]["DESCRIPTION"],             # description                                      
+                 result['uri'],                     # hospital_id
+				 hospital_file,                     # filename
+                 'standard']                        # charge type
         df.loc[idx,:] = entry
 
 # Remove empty rows
