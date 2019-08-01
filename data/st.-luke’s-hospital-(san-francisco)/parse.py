@@ -4,8 +4,10 @@ import os
 from glob import glob
 import json
 import codecs
-import pandas
+import pandas as pd
+import numpy as np
 import datetime
+from tqdm import tqdm
 
 here = os.path.dirname(os.path.abspath(__file__))
 folder = os.path.basename(here)
@@ -36,10 +38,10 @@ columns = ['charge_code',
            'filename', 
            'charge_type']
 
-df = pandas.DataFrame(columns=columns)
+df = pd.DataFrame(columns=columns)
 
 # First parse standard charges (doesn't have DRG header)
-for result in results:
+for result in tqdm(results):
     filename = os.path.join(latest, result['filename'])
     if not os.path.exists(filename):
         print('%s is not found in latest folder.' % filename)
@@ -55,8 +57,9 @@ for result in results:
 
     if filename.endswith('json'):
 
-         with codecs.open(filename, "r", encoding='utf-8-sig', errors='ignore') as filey:
-             content = json.loads(filey.read())
+         with codecs.open(filename, "r", 
+            encoding='utf-8-sig', errors='ignore') as filey:
+             content = json.load(filey)
 
          charge_types = {'DRG': 'drg', 
                          'IP': 'inpatient', 
@@ -64,28 +67,48 @@ for result in results:
                          'RX': 'pharmacy', 
                          'SUP': 'supply'}
 
-         for row in content['CDM']:
-            hospital = result["hospital_id"]
-            if 'HOSPITAL_NAME' in row:
-                hospital = row['HOSPITAL_NAME']
-            description_key = 'DESCRIPTION'
-            if description_key not in row:
-                description_key = 'DESCRIPTION'
-            charge_type = charge_types[row['SERVICE_SETTING']]
-            idx = df.shape[0] + 1
-            entry = [row['CDM'],              # charge code
-                     row['CHARGE'],           # price
-                     row[description_key],      # description
-                     hospital,   # hospital_id
-                     result['filename'],
-                     charge_type]            
-            df.loc[idx,:] = entry
+         # Create dataframe and make empty strings null
+         temp = pd.DataFrame.from_records(content['CDM']).replace({'': np.nan})
+
+         # For any null hospital names, 
+         # replace with hospital_id from records.json
+         temp['HOSPITAL_NAME'].fillna(result["hospital_id"], inplace=True)
+
+         # Rename columns accordingly
+         # Note that we'll need to fill in the filename column manually
+         temp.rename(columns={
+            'CDM': 'charge_code',
+            'CHARGE': 'price',
+            'DESCRIPION': 'description',
+            'HOSPITAL_NAME': 'hospital_id', 
+            'SERVICE_SETTING': 'charge_type'
+            }, inplace=True)
+
+         # Reformat hospital_id to be lowercase with hyphens instead of spaces
+         temp['hospital_id'] = \
+         temp['hospital_id'].astype(str).str.lower().str.replace(" ", "-")
+
+         # Make sure we map the values of charge_type properly
+         temp['charge_type'] = temp['charge_type'].map(charge_types)
+
+         # Add filename column
+         temp['filename'] = result['filename']
+
+         # Remove extraneous columns
+         extra_cols = list(temp.columns[~temp.columns.isin(columns)])
+         temp.drop(columns=extra_cols, inplace=True)
+
+         df = df.append(temp, ignore_index=True)
+
+    else:
+        break
 
 
 # Remove empty rows
 df = df.dropna(how='all')
+print(df.head())
 
-# Save data!
+# Save data! ...and make sure columns are ordered in standard way
 print(df.shape)
-df.to_csv(output_data, sep='\t', index=False)
-df.to_csv(output_year, sep='\t', index=False)
+df.to_csv(output_data, columns=columns, sep='\t', index=False)
+df.to_csv(output_year, columns=columns, sep='\t', index=False)

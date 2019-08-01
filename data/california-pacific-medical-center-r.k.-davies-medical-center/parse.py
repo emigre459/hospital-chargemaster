@@ -5,6 +5,7 @@ from glob import glob
 import json
 import pandas
 import datetime
+import tqdm
 
 here = os.path.dirname(os.path.abspath(__file__))
 folder = os.path.basename(here)
@@ -49,8 +50,11 @@ for result in results:
 
     if filename.endswith('xlsx'):
         content = pandas.read_excel(filename)
+    else:
+        break
  
     print("Parsing %s" % filename)
+    print(f"Original shape of data is {content.shape}")
 
 
     # Update by row
@@ -62,36 +66,46 @@ for result in results:
     # 'DESCRIPION', 
     # 'REVENUE_CODE', 
     # 'CHARGE']
-    for row in content.iterrows():
 
-        if row[1].SERVICE_SETTING == 'IP':
-            charge_type = 'inpatient'
-        elif row[1].SERVICE_SETTING == 'OP':
-            charge_type = 'outpatient'
-        elif row[1].SERVICE_SETTING == 'DRG':
-            charge_type = 'drg'
-        elif row[1].SERVICE_SETTING == 'SUP':
-            charge_type = 'supply'
-        elif row[1].SERVICE_SETTING == 'RX':
-            charge_type = 'pharmacy'
-        
-        # Charge code can be revene code or CDM ?
-        charge_code = row[1].REVENUE_CODE
-        if pandas.isnull(charge_code):
-            charge_code = row[1].CDM
+    # charge type
+    content['SERVICE_SETTING'] = content['SERVICE_SETTING'].map({
+        'IP': 'inpatient',
+        'OP': 'outpatient',
+        'DRG': 'drg',
+        'SUP': 'supply',
+        'RX': 'pharmacy'
+    })
 
-        idx = df.shape[0] + 1
-        entry = [charge_code,                 # charge code
-                 row[1]["CHARGE"],            # price
-                 row[1]['DESCRIPTION'],        # description
-                 row[1]["HOSPITAL_NAME"],     # hospital_id
-                 result['filename'],
-                 charge_type] 
-        df.loc[idx,:] = entry
+    print(f"Shape of data after mapping is {content.shape}")
 
+    # If revenue code is null then charge code is CDM value, 
+    # otherwise it's revenue code
+    content['REVENUE_CODE'].fillna(content['CDM'], inplace = True)
+    print(f"Shape of data after fillna is {content.shape}")
 
+    # Make sure hospital name is to project's standard ID format
+    content['HOSPITAL_NAME'] = \
+    content['HOSPITAL_NAME'].astype(str).str.lower().str.replace(" ", "-")
+
+    print(f"Shape of data after hospital id formatting is {content.shape}")
+
+    temp = pandas.DataFrame(data = [
+        content['REVENUE_CODE'],     # charge code
+        content['CHARGE'],           # price
+        content['DESCRIPION'],       # description
+        content['HOSPITAL_NAME'],    # hospital id
+        pandas.Series([result['filename']] * len(content['HOSPITAL_NAME'])), # filename
+        content['SERVICE_SETTING']   # charge type
+        ]).transpose()
+
+    temp.columns = columns
+
+    df = df.append(temp, ignore_index=True)
+
+print(f"Shape of df before dropping nulls is {df.shape}\n")
+print(df.head())
 # Remove empty rows
-df = df.dropna(how='all')
+df.dropna(how='all', inplace=True)
 
 # Save data!
 print(df.shape)
