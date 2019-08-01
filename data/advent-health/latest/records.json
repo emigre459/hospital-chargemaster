@@ -1,7 +1,7 @@
 [
     {
         "hospital_id": "adventhealth-altamonte-springs",
-        "filename": "adventhealth-altamonte-springs-CFR.xml",
+        "filename": "adventhealth-altamonte-springs-CFR.csv",
         "date": "2019-01-17",
         "uri": "adventhealth-altamonte-springs",
         "name": "AdventHealth Altamonte Springs",
@@ -9,7 +9,7 @@
     },
     {
         "hospital_id": "adventhealth-apopka",
-        "filename": "adventhealth-apopka-CFR.xml",
+        "filename": "adventhealth-apopka-CFR.csv",
         "date": "2019-01-17",
         "uri": "adventhealth-apopka",
         "name": "AdventHealth Apopka",
@@ -25,7 +25,7 @@
     },
     {
         "hospital_id": "adventhealth-celebration",
-        "filename": "adventhealth-celebration-CFR.xml",
+        "filename": "adventhealth-celebration-CFR.csv",
         "date": "2019-01-17",
         "uri": "adventhealth-celebration",
         "name": "AdventHealth Celebration",
@@ -65,7 +65,7 @@
     },
     {
         "hospital_id": "adventhealth-east-orlando",
-        "filename": "adventhealth-east-orlando-CFR.xml",
+        "filename": "adventhealth-east-orlando-CFR.csv",
         "date": "2019-01-17",
         "uri": "adventhealth-east-orlando",
         "name": "AdventHealth East Orlando",
@@ -81,7 +81,7 @@
     },
     {
         "hospital_id": "adventhealth-for-children",
-        "filename": "adventhealth-for-children-CFR.xml",
+        "filename": "adventhealth-for-children-CFR.csv",
         "date": "2019-01-17",
         "uri": "adventhealth-for-children",
         "name": "AdventHealth for Children",
@@ -89,7 +89,7 @@
     },
     {
         "hospital_id": "adventhealth-kissimmee",
-        "filename": "adventhealth-kissimmee-CFR.xml",
+        "filename": "adventhealth-kissimmee-CFR.csv",
         "date": "2019-01-17",
         "uri": "adventhealth-kissimmee",
         "name": "AdventHealth Kissimmee",
@@ -129,7 +129,7 @@
     },
     {
         "hospital_id": "adventhealth-orlando",
-        "filename": "adventhealth-orlando-CFR.xml",
+        "filename": "adventhealth-orlando-CFR.csv",
         "date": "2019-01-17",
         "uri": "adventhealth-orlando",
         "name": "AdventHealth Orlando",
@@ -185,7 +185,7 @@
     },
     {
         "hospital_id": "adventhealth-winter-garden",
-        "filename": "adventhealth-winter-garden-CFR.xml",
+        "filename": "adventhealth-winter-garden-CFR.csv",
         "date": "2019-01-17",
         "uri": "adventhealth-winter-garden",
         "name": "AdventHealth Winter Garden",
@@ -193,7 +193,7 @@
     },
     {
         "hospital_id": "adventhealth-winter-park",
-        "filename": "adventhealth-winter-park-CFR.xml",
+        "filename": "adventhealth-winter-park-CFR.csv",
         "date": "2019-01-17",
         "uri": "adventhealth-winter-park",
         "name": "AdventHealth Winter Park",

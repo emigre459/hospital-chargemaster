@@ -5,7 +5,8 @@ import xmltodict
 from glob import glob
 import json
 import datetime
-import pandas
+import pandas as pd
+import numpy as np
 from tqdm import tqdm # progress bar
 
 here = os.path.dirname(os.path.abspath(__file__))
@@ -38,7 +39,7 @@ columns = ['charge_code',
            'filename', 
            'charge_type']
 
-df = pandas.DataFrame(columns=columns)
+df = pd.DataFrame(columns=columns)
 
 # Helper Functions - different formats of XML
 def process_dataroot(content, df, hospital_id, filename):
@@ -48,34 +49,43 @@ def process_dataroot(content, df, hospital_id, filename):
         if not hospital_name.startswith('@'):            
             break
 
-    for entry in content['dataroot'][hospital_name]:
-        # ed means entry dict
-        idx = df.shape[0] + 1
-        ed = dict()
-        for item, value in entry.items():
-            if "code" in item.lower():
-                ed['charge_code'] = value
-            elif "description" in item.lower():
-                ed['description'] = value
-            elif "price" in item.lower():
-                ed['price'] = value
+    temp = pd.DataFrame(content['dataroot'][hospital_name])\
+    .rename(columns={'Charge_x0020_Code': 'charge_code',
+        'Description': 'description'})
 
-        row = [ed['charge_code'], ed['price'], ed['description'], hospital_id, filename, "standard"]
-        df.loc[idx, :] = row
+    # Need to melt the dataframe so that 
+    # unique price type columns (e.g. Inpatient vs. Outpatient)
+    # are captured in a charge_type field
+    temp = temp.melt(id_vars=['charge_code', 'description'],
+        value_name='price', var_name='charge_type')\
+    .dropna(subset=['price'])
 
-    return df
+    # Map charge_type values to standard labels
+    temp['charge_type'] = \
+    temp['charge_type'].map({'Inpatient_x0020_Price': 'inpatient',
+                             'Outpatient_x0020_Price': 'outpatient'})
+
+    # add in filename and hospital_id columns
+    temp['filename'] = filename
+    temp['hospital_id'] = hospital_id
+
+    return df.append(temp, ignore_index=True, sort=True)
 
 
-def process_workbook(content, df, hospital_id, filename):    
+def process_workbook(df, hospital_id, filename, filepath):    
     # First row is header
-    for r in range(1, len(content['Workbook']['Worksheet']['Table']['Row'])):
-        idx = df.shape[0] + 1
-        row = content['Workbook']['Worksheet']['Table']['Row'][r]
-        description = row['Cell'][0]['Data']['#text']
-        price = row['Cell'][1]['Data']['#text']
-        items = [None, price, description, hospital_id, filename, "standard"]
-        df.loc[idx, :] = items
-    return df
+    temp = pd.read_csv(filepath, thousands=',')
+
+    # Rename to standard column names
+    temp.rename(columns={'Charge Description': 'description',
+        'Charge Amount': 'price'}, inplace=True)
+
+    temp['charge_code'] = np.nan
+    temp['hospital_id'] = hospital_id
+    temp['filename'] = filename
+    temp['charge_type'] = 'standard'
+
+    return df.append(temp, ignore_index=True, sort=True)
 
 
 seen = []
@@ -95,7 +105,7 @@ for result in tqdm(results):
     seen.append(result['filename'])
     print('Parsing %s' % filename)
 
-    # Option 1: parse an XML file
+    # Parse the different XML files
     if filename.endswith('xml'):
         with open(filename, 'r') as filey:
             content = xmltodict.parse(filey.read())
@@ -103,11 +113,14 @@ for result in tqdm(results):
         if "dataroot" in content:
             df = process_dataroot(content, df, result['uri'], 
                 result['filename'])
-        elif "Workbook" in content:
-            df = process_workbook(content, df, result['uri'], 
-                result['filename'])
+    elif filename.endswith('csv'):
+        df = process_workbook(df, result['uri'], 
+            result['filename'], filename)
+
+    else:
+        break
 
     # Save data as we go
-    print(df.shape)
-    df.to_csv(output_data, sep='\t', index=False)
-    df.to_csv(output_year, sep='\t', index=False)
+    print(df.head(3))
+    df.to_csv(output_data, columns=columns, sep='\t', index=False)
+    df.to_csv(output_year, columns=columns, sep='\t', index=False)
