@@ -41,42 +41,29 @@ This repo does the following:
 
 ### CMS-Provided Hospital Data <a name="hospital_data"></a>
 
-In order to provide enough features/variables at the hospital level to build predictive models, hospital-level datasets are required that cover a wide range of variables. Here I provide some brief descriptions for the versioned datasets used in this work. More information at a table and column level can be found in [the data dictionary](data_dictionary.csv). All of these datasets were accessed programmatically using [the data.medicare.gov APIs for the Hospital Compare datasets](https://data.medicare.gov/data/hospital-compare). Whenever possible, the version of the originating dataset (e.g. it's most recent metadata update) is provided in [the data dictionary](data_dictionary.csv).
+In order to provide enough features/variables at the hospital level to build predictive models, hospital-level datasets are required that cover a wide range of variables. Metadata and information about the source tables and columns can be found in [the metadata file](metadata.csv) and [the data dictionary](Medicare_Hospitals_DataDictionary.pdf), resp. All of these datasets were accessed programmatically using [the data.medicare.gov APIs for the Hospital Compare datasets](https://data.medicare.gov/data/hospital-compare). Even more information can be found by exploring the [Phase I data wrangling Jupyter notebook](PhaseI_CMS_Data_Engineering.ipynb), regarding decisions and transformations applied. One common element you'll find with all of these data is that they largely relate to inpatient hospital stays for acute care (short-term treatment, instead of long-term situations like nursing homes).
 
-1. `Hospital_Readmissions_Reduction_Program`
-	* Provides data on individual hospitals' predictions of readmissions for patients within 30 days that are suffering from certain types of ailments and received certain kinds of treatments. Effectively, it provides information on how good individual hospitals are at predicting patient readmissions as compared to a similar hospital's average.
-	* The `Provider ID` column of these data was used to give each hospital in the dataset a unique identifier by matching to the `Hospital Name` field as best as possible.
-	
-2. `Skilled_Nursing_Facility_Quality_Reporting_Program_07-24-2019.csv`
-	* Dataset last updated on 7/24/2019, but data actually cover 10/1/2017 to 9/30/2018
-	* Provides data about Skilled Nursing Facilities (which can be hospitals that provide long-term nursing-home-like care, or standalone nursing homes), in particular a `Score` column that rates the quality of long-term care provided at that facility.
-	* Fair warning: lots of missing values in this one
-	* The full data dictionary [appears to be provided here](https://leadingage.org/sites/default/files/Skilled%20Nursing%20Facility%20Quality%20Reporting%20Program%20(SNF%20QRP)%20Measures%20on%20Nursing%20Home%20Compare.pdf) and I've included it in the Zenodo upload for this dataset as well, but I had to hunt it down and pull it from a non-government website, so no guarantees.
-	
-3. `Long-Term_Care_Hospital-General_06-06-2019.csv`
-	* Dataset last updated on 6/6/2019
-	* Provides a bunch of high-level data about hospitals including street address, ownership type (e.g. non-profit), the total number of patient beds at the facility, and when it was first certified.
-	
-4. `Long-Term_Care_Hospital-Provider_06-06-2019.csv`
-	* Dataset last updated on 6/6/2019
-	* Very similar data as provided in the General file, but it doesn't include some of the high-level information (e.g. number of beds) and *does* include some very specific patient-centric scores (e.g. number of patients that experienced serious falls during their stay at the facility)
-	* These scores were broken up into their own columns (one column per score type, with its values being the actual scores) to treat them as separate features for modeling. In particular, this was necessary so that they could be scaled as separate features, as each score type seems to be on a different scale (e.g. some are raw counts of patients and some are percentages of patients).
-	* The full data dictionary [appears to be provided here](https://data.medicare.gov/views/bg9k-emty/files/34cd7aa0-f28f-4c13-a856-d1a372745aa2) and I've included it in the Zenodo upload for this dataset as well, but I had to hunt it down, so no guarantees.
-	
-5. `Clinical_Episode-Based_Payment-Hospital_04-28-2019.csv`
-	* Dataset last updated on 4/28/2019, but data only cover the calendar year 2017
-	* Compares how much Medicare spends on a given medical condition's treatment at specific hospitals to the national average it spends across all hospitals
-	* The data are normalized for risk (e.g. by accounting for patients' age and overall health status) and geographic differences in treatment costs
-	* These data can be used as a proxy for how reasonable the rates for a given hospital are across procedures and consumables. In other words, these ratios can be used as indicators for the market-competitiveness of chargemaster prices from this hospital when adjusted for an insurance rate (in this case, Medicare). This helps to address the chief complaint of critics of the chargemaster data: that the chargemasters reflect pre-insurance-negotiation rates and that they are nearly random numbers with no statistical meaning that can be derived for patients concerned about what they'll actually pay (as even those paying out of pocket typically receive a discounted rate relative to the chargemaster price). 
-	* Including these ratios as features (and also engineering a new feature from their average for a given hospital) will allow for the model to have some concept as to how reasonable the prices from a given hospital may be, **with lower ratios indicating a cheaper price than the Medicare-average and higher ratios indicating a price premium relative to the national Medicare average** (adjusted for geography and risk elements, as mentioned earlier).
+Here I provide some brief descriptions for the versioned datasets used in this work:
 
-6. `Medicare_Spending_Per_Beneficiary-Hospital_Addl_Decimals_04-28-2019.csv`
-	* Dataset last updated on 4/28/2019, but data only cover the calendar year 2017
-	* Just a general comparison of how a given hospital charges for an average "episode of care" for a patient relative to the national median of hospitals.
-	* Higher values = more expensive than the median; lower values = less expensive than the median
-	* Like other datasets, this controls for risk and geographic factors affecting prices
-	
-7. ``
+1. Hospital General Information
+	* A list of all hospitals that have been registered with Medicare. The list includes addresses, phone numbers, hospital type, and overall hospital rating.
+3. Complications and Deaths - Hospital
+	* Complications and deaths data provided by the hospitals themselves. These data include the hip/knee complication measure, the CMS Patient Safety Indicators, and 30-day death rates.
+4. Healthcare Associated Infections - Hospital
+	* Information on infections that occur while the patients are in the hospital
+5. Unplanned Hospital Visits - Hospital
+	* Hospital-reported data for the hospital return days (or excess days in acute care [EDAC]), indicating 
+6. Hospital Readmissions Reduction Program
+	* This extends the Unplanned Hospital Visits data by normalizing readmission rates to a statisically-derived similar average-performing hospital (higher values meaning the hospital in question has more readmissions in a 30-day period than is expected nationally). 
+7. Medicare Spending Per Beneficiary – Hospital Additional Decimal Places
+	* Shows whether Medicare spends more, less, or about the same for an episode of care at a specific hospital compared to all hospitals nationally
+8. Outpatient Imaging Efficiency - Hospital
+	* Hospital-provided data about the use of medical imaging in their facilities for outpatients
+9. Patient survey (HCAHPS) - Hospital
+	* Response date from the HCAHPS national, standardized survey of hospital patients about their experiences during a recent inpatient hospital stay
+10. Structural Measures - Hospital
+	* A list of hospitals and the structural measures they report (e.g. if they utilize electronic health records systems, AKA EHRs)
+
 
 ### How do the chargemaster data get gathered? <a name="charge_data"></a>
 
