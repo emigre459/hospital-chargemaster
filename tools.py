@@ -296,7 +296,9 @@ def map_each_hospital(data, target_column=None, train_size=0.6, quantile=1.0,
     quantile: float in range [0.0, 1.0]. Indicates what top % of 
         the target data you want displayed (locations outside of
         the defined quantile will not be plotted). A value of 1.0
-        (the default) results in all data being plotted. Values less than 0.5 are assumed to mean "show me the top X%", whereas values greater than 0.5 are assumed to mean "show me the bottom (1-X)%". Ignored if 
+        (the default) results in all data being plotted. Values less than 0.5 
+        are assumed to mean "show me the top X%", whereas values greater 
+        than 0.5 are assumed to mean "show me the bottom (1-X)%". Ignored if 
         target_column is None. Use 1.0 if you want to see all data.
 
     quantile_direction: str. Either 'top' or 'bottom'. Indicates if user 
