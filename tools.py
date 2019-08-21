@@ -89,7 +89,7 @@ def view_target_distribution(data, target_column, train_size=0.6):
     _, _, target_train, target_test = split_data(data, 
         target_column, train_size)
 
-    fig, axes = plt.subplots(figsize=(5,7), nrows=3)
+    fig, axes = plt.subplots(figsize=(5,7), nrows=3, sharex=True)
     #fig.suptitle('Distributions of Target Variable')
 
     target = target_train.append(target_test)
@@ -275,7 +275,7 @@ def corr_to_target(data, target_column, train_size=0.6, title=None, file=None,
 
 
 def map_each_hospital(data, target_column=None, train_size=0.6, quantile=1.0, 
-    quantile_direction='top', labels={}, title=""):
+    quantile_direction='top', labels={}, save_file=None):
     '''
     Map out the locations of hospitals, with marker sizes and colors 
     reflecting the size of the target variable. Map is interactive.
@@ -311,6 +311,9 @@ def map_each_hospital(data, target_column=None, train_size=0.6, quantile=1.0,
         correspond to column names, and the values should correspond to the 
         desired label to be displayed (e.g. {target_column: 'Heart Attacks'})
 
+    save_file: str. Should provide a filepath for the interactive HTML 
+        to be saved. If None, file is not saved.
+
 
     Returns
     -------
@@ -322,6 +325,13 @@ def map_each_hospital(data, target_column=None, train_size=0.6, quantile=1.0,
     # Pass in my public mapbox token for contextual mapping
     px.set_mapbox_access_token(open("secure_keys/public.mapbox_token").read())
 
+    # Setup figure title
+    if quantile == 1.0:
+        title = "All Training Data"
+    elif quantile_direction == 'top':
+        title = f"Top {int(quantile * 100)}%"
+    else:
+        title = f"Bottom {int(quantile * 100)}%"
 
     if target_column:
         features_train, _, target_train, _ = split_data(data, 
@@ -363,6 +373,9 @@ def map_each_hospital(data, target_column=None, train_size=0.6, quantile=1.0,
         fig = px.scatter_mapbox(data, 
             lat="Latitude", lon="Longitude", 
             zoom=2, opacity=0.25, labels=labels, title=title)
+
+    if save_file:
+        fig.write_html(save_file)
 
     fig.show()
 
