@@ -45,7 +45,26 @@ def load_data_file(filepath):
     return None
 
 
-def view_target_distribution(data, target_column, train_size):
+def is_sparse(data):
+    '''
+    Check to see if the data are sparse using the common metric of 
+    checking if there are 50% or more values that are zero in the matrix.
+
+
+    Parameters
+    ----------
+    data: pandas DataFrame of all features + target
+
+
+
+    Returns
+    -------
+    bool. If True, data is sparse.
+    '''
+
+    return (data == 0).sum().sum() / (len(data) * len(data.columns)) >= 0.50
+
+def view_target_distribution(data, target_column, train_size=0.6):
     '''
     Plots the target variable distribution for the training,
     testing, and full datasets. This allows for a visual
@@ -67,8 +86,13 @@ def view_target_distribution(data, target_column, train_size):
     Nothing, just plots
     '''
 
-    fig, axes = plt.subplots(figsize=(5,10), nrows=3)
-    fig.suptitle('Distributions of Target Variable')
+    _, _, target_train, target_test = split_data(data, 
+        target_column, train_size)
+
+    fig, axes = plt.subplots(figsize=(5,7), nrows=3)
+    #fig.suptitle('Distributions of Target Variable')
+
+    target = target_train.append(target_test)
 
     plots = {'Training Data': target_train, 'Testing Data': target_test, 'All Data': target}
 
@@ -77,6 +101,8 @@ def view_target_distribution(data, target_column, train_size):
         sns.distplot(plots[target_types], ax=axes[i], axlabel='target value')
         axes[i].set(title=target_types)
         
+
+    #plt.subplots_adjust(top=0.5)
     plt.tight_layout()
     plt.show();
 
@@ -159,8 +185,37 @@ def calculate_split_fractions(validation_size, test_size, print_folds=False):
     return result
 
 
+def split_data(data, target_column, train_size=0.6):
+    '''
+    Convenience function that takes the full features + target data and 
+    splits it up into training and testing features and target.
 
-def corr_to_target(data, target_column, title=None, file=None):
+    Parameters
+    ----------
+    data: pandas DataFrame of all features + target
+    
+    target_column: str. Column name of the target variable in data
+
+    train_size: float. Fraction of the full dataset you intend to use 
+        for training. Must be in the bounds (0.0,1.0)
+
+
+    Returns
+    -------
+    4-tuple of the form features_train, features_test, 
+    target_train, target_test
+    '''
+
+    target = data.loc[:, target_column].dropna()
+    features = data.dropna(subset=[target_column])\
+    .drop(columns=[target_column])
+
+    return train_test_split(features, target, 
+        train_size=train_size, random_state=RANDOM_STATE)
+
+
+def corr_to_target(data, target_column, train_size=0.6, title=None, file=None,
+    print_corrs=True):
     '''
     Produces a sorted plot of correlations of feature values to the target variable, 
     colored like a heatmap. Most positive correlations on top.
@@ -172,10 +227,18 @@ def corr_to_target(data, target_column, title=None, file=None):
     data: pandas DataFrame of all features + target
     
     target_column: str. Column name of the target variable in data
+
+    train_size: float. Fraction of the full dataset you intend to use 
+        for training. Must be in the bounds (0.0,1.0)
     
     title: str. Title to put on the plot
     
     file: str/filepath with filename (e.g. "figs/1.png". Saves the plot
+
+    print_corrs: bool. If True, prints out the table behind the visual (as
+     having too many features will cause items on the visual to be dropped 
+     for the sake of saving space)
+
     
     
     Returns
@@ -183,14 +246,22 @@ def corr_to_target(data, target_column, title=None, file=None):
     Nothing returned, only plots
     
     '''
-    # Merge target and features together
+    # Split out data so you're only looking at training data for inspiration
+    # and test data is left until final evaluation
+    features_train, _, target_train, _ = split_data(data, 
+        target_column, train_size)
+
+
     plt.figure(figsize=(4,6))
     sns.set(font_scale=1)
+
+    # Merge target_train and feature_train
+    features_train[target_column] = target_train
     
-    sns.heatmap(data.corr()[[target_column]].sort_values(target_column,
-                                                ascending=False)[1:],
-                annot=True,
-                cmap='coolwarm')
+    sns.heatmap(features_train.corr()[[target_column]].sort_values(target_column,
+        ascending=False)[1:],
+    annot=True,
+    cmap='coolwarm')
     
     if title: plt.title(f'\n{title}\n', fontsize=18)
     plt.xlabel('')    # optional in case you want an x-axis label
@@ -198,8 +269,13 @@ def corr_to_target(data, target_column, title=None, file=None):
     if file: plt.savefig(file, bbox_inches='tight')
     plt.show();
 
+    if print_corrs:
+        print(data.corr()[target_column].sort_values(ascending=False)\
+                    .drop(target_column))
 
-def map_each_hospital(data, target_column, quantile=1.0):
+
+def map_each_hospital(data, target_column=None, train_size=0.6, quantile=1.0, 
+    quantile_direction='top', labels={}, title=""):
     '''
     Map out the locations of hospitals, with marker sizes and colors 
     reflecting the size of the target variable. Map is interactive.
@@ -209,12 +285,29 @@ def map_each_hospital(data, target_column, quantile=1.0):
     ----------
     data: pandas DataFrame of all features + target
     
-    target_column: str. Column name of the target variable in data
+    target_column: str. Column name of the target variable in data. If None,
+        marker sizes will be uniform instead of scaled to target_column values.
+        Note also that, if None, all data are shown, not a training subset.
+
+    train_size: float. Fraction of the full dataset you intend to use 
+        for training. Must be in the bounds (0.0,1.0). Ignored if 
+        target_column is None.
 
     quantile: float in range [0.0, 1.0]. Indicates what top % of 
         the target data you want displayed (locations outside of
         the defined quantile will not be plotted). A value of 1.0
-        (the default) results in all data being plotted.
+        (the default) results in all data being plotted. Values less than 0.5 are assumed to mean "show me the top X%", whereas values greater than 0.5 are assumed to mean "show me the bottom (1-X)%". Ignored if 
+        target_column is None. Use 1.0 if you want to see all data.
+
+    quantile_direction: str. Either 'top' or 'bottom'. Indicates if user 
+        wants to see the "top X%" quantile or the "bottom X%" 
+        quantile. Use 'bottom' if you want to see all data.
+
+    labels: dict with str keys and str values. By default, column names are 
+        used in the figure for axis titles, legend entries and hovers. This 
+        parameter allows this to be overridden. The keys of this dict should 
+        correspond to column names, and the values should correspond to the 
+        desired label to be displayed (e.g. {target_column: 'Heart Attacks'})
 
 
     Returns
@@ -224,21 +317,56 @@ def map_each_hospital(data, target_column, quantile=1.0):
 
     '''
 
-    data_top_target_quantile = data[data[target_column] >= \
-    data.quantile(1-quantile)[target_column]]\
-    .dropna(subset=[target_column])
+    # Pass in my public mapbox token for contextual mapping
+    px.set_mapbox_access_token(open("secure_keys/public.mapbox_token").read())
 
-    # Map only top X% of target value with color scale midpoint at median of whole dataset
-    fig = px.scatter_mapbox(data_top_target_quantile, 
-        lat="Latitude", lon="Longitude", 
-        color=target_column, size=target_column,
-        size_max=7, zoom=2, opacity=0.25,
-        color_continuous_midpoint=data.quantile(0.5)[target_column])
+
+    if target_column:
+        features_train, _, target_train, _ = split_data(data, 
+            target_column, train_size)
+
+        # Combine target and features
+        features_train[target_column] = target_train
+
+        # 'top' -> at or above
+        if quantile_direction == 'top':
+            print(f"Only showing values at or above \
+            {features_train.quantile(1-quantile)[target_column]}")
+
+            top_target_quantile = features_train[features_train[target_column] >= \
+            features_train.quantile(1-quantile)[target_column]]
+
+        # Assume when a large quantile is given, users wants "this % and lower"
+        elif quantile_direction == 'bottom':
+            print(f"Only showing values at or below \
+            {features_train.quantile(quantile)[target_column]}")
+
+            top_target_quantile = features_train[features_train[target_column]\
+             <= features_train.quantile(quantile)[target_column]]
+
+        else: raise ValueError("Invalid value for quantile_direction. Use 'top' or 'bottom'.")
+
+
+        # Map only top X% of target value with color scale midpoint at median of whole dataset
+        fig = px.scatter_mapbox(top_target_quantile, 
+            lat="Latitude", lon="Longitude", 
+            color=target_column, size=target_column,
+            size_max=7, zoom=2, opacity=0.25,
+            color_continuous_scale=px.colors.diverging.Portland,
+            color_continuous_midpoint=data.quantile(0.5)[target_column],
+            labels=labels, title=title)
+
+    # target_column is None
+    else:        
+        fig = px.scatter_mapbox(data, 
+            lat="Latitude", lon="Longitude", 
+            zoom=2, opacity=0.25, labels=labels, title=title)
 
     fig.show()
 
 
-def state_level_choropleth(data, target_column, statistic='mean'):
+def state_level_choropleth(data, target_column, train_size=0.6, 
+    statistic='mean', labels={}):
     '''
     Create a colored choropleth map (heat map) at the state level 
     that colors states based upon the aggregated `statistic` value
@@ -255,6 +383,12 @@ def state_level_choropleth(data, target_column, statistic='mean'):
         descriptive statistic is used for coloring the states in the
         choropleth map.
 
+    labels: dict with str keys and str values. By default, column names are 
+        used in the figure for axis titles, legend entries and hovers. This 
+        parameter allows this to be overridden. The keys of this dict should 
+        correspond to column names, and the values should correspond to the 
+        desired label to be displayed (e.g. {target_column: 'Heart Attacks'})
+
 
     Returns
     -------
@@ -263,13 +397,22 @@ def state_level_choropleth(data, target_column, statistic='mean'):
 
     '''
 
+    # Pass in my public mapbox token for contextual mapping
+    px.set_mapbox_access_token(open("secure_keys/public.mapbox_token").read())
+
+    features_train, _, target_train, _ = split_data(data, 
+            target_column, train_size)
+
+    # Combine target and features
+    features_train[target_column] = target_train
+
     if statistic == 'mean':
-        data_grouped = data.groupby('state', as_index=False).mean()
-        title = "Mean Number of Deaths by State"
+        data_grouped = features_train.groupby('state', as_index=False).mean()
+        title = "Mean Value by State"
 
     elif statistic == 'median':
-        data_grouped = data.groupby('state', as_index=False).median()
-        title = "Median Number of Deaths by State"
+        data_grouped = features_train.groupby('state', as_index=False).median()
+        title = "Median Value by State"
 
     else:
         raise ValueError("Unallowed value of `statistic` used. \
@@ -278,32 +421,76 @@ def state_level_choropleth(data, target_column, statistic='mean'):
     # State-level choropleth map of the target variable
     fig = px.choropleth(data_grouped,
         locations='state', locationmode='USA-states',
-        color=target_column, hover_data=[target_columnl],
+        color=target_column, hover_data=[target_column],
+        color_continuous_scale=px.colors.diverging.Portland,
         scope='usa',
-        title=title)
+        title=title, labels=labels)
     fig.show()
 
 
-def model_data(data, target_column, validation_size, test_size, estimator):
+def model_data(data, target_column, 
+    validation_size=0.2, test_size=0.2, estimator, n_pcs_xgb=64):
+    '''
+    Builds and runs the following pipeline through a randomized search
+    parameter optimizer (sklearn's RandomizedSearchCV):
+
+    1. Multivariate imputation
+    2. Standardize the data
+    3. PCA
+    4. Fit and tune the hyperparameters of one of three possible models
+
+    Note that one of the three models possible (XGBoost) doesn't play well
+    with RandomizedSearchCV and Pipelines, so it is less robust in its results
+    (because it doesn't search over any parameters other than hyperparameters)
+
+
+    Parameters
+    ----------
+    data: pandas DataFrame of all features (only numeric ones) + target
+    
+    target_column: str. Column name of the target variable in data
+
+    validation_size: float. Fraction of the full dataset you intend to use 
+        for validation during tuning. Must be in the bounds (0.0,1.0)
+
+    test_size: float. Fraction of the full dataset you intend to use 
+        for final testing. Must be in the bounds (0.0,1.0)
+
+    estimator: str. Can be ElasticNet, kNN, or XGBoost. Indicates the type of 
+        model you want to train
+
+    n_pcs_xgb: int. Dictates how many principal components should be used in
+        model training and testing for the XGBoost estimator, since that one
+        can't be put into a pipeline to test how many PCs are optimal.
+        Note that prior testing has shown that values of 34 to 95 
+        correspond to 75% to 99% explained variance, resp. The default
+        of 64 corresponds to 95% explained variance
+
+
+
+    Returns
+    -------
+    R^2 score on the test data as a float. Also reports out on the results of training, parameters ultimately used by printing to console..
     '''
     
-    '''
-
-    # Split target and features, and drop any values of target that are null
-    target = data.loc[:, target_column].dropna()
-    features = data.dropna(subset=[target_column])\
-    .drop(columns=[target_column])
+    # Remove 'state' column if it's in there - we can't model those strings
+    if 'state' in data.columns:
+        print("Dropping the 'state' column...")
+        data = data.drop(columns=['state'])
 
     # Split into training and testing data
     features_train, features_test, target_train, target_test =\
-    train_test_split(features, target,
-        test_size=test_size, random_state=RANDOM_STATE)
+    split_data(data, target_column,
+        train_size = 1 - (validation_size + test_size))
+
+    
+
 
     # Setup missing value imputer
     # Need this in pipeline to make sure we aren't using validation
     # (AKA k-1) data to impute training data
     imputer = IterativeImputer(sample_posterior=True,
-                              max_iter=73,
+                              max_iter=90,
                               add_indicator=False,
                               random_state=RANDOM_STATE)
 
@@ -341,8 +528,26 @@ def model_data(data, target_column, validation_size, test_size, estimator):
     # with early stopping and eval_sets fit parameters, so
     # it requires manual preprocessing
     elif estimator == 'XGBoost':
-        reg = XGBRegressor(n_jobs=4, objective='reg:squarederror',
+        reg = XGBRegressor(n_jobs=-1, objective='reg:squarederror',
             random_state=RANDOM_STATE)
+
+        # Impute
+        print("Imputing...")
+        features_train = imputer.fit_transform(features_train)
+        features_test = imputer.transform(features_test)
+
+        # Scale (standardize)
+        print("Standardizing...")
+        features_train = scaler.fit_transform(features_train)
+        features_test = scaler.transform(features_test)
+
+        print(f"Performing PCA with {n_pcs_xgb} components...")
+        pca = PCA(n_components=n_pcs_xgb, random_state=RANDOM_STATE)
+        features_train = pca.fit_transform(features_train)
+        features_test = pca.transform(features_test)
+        print(f"`features_train` now has shape {features_train.shape}")
+        print(f"`features_test` now has shape {features_test.shape}")
+
 
         param_dist = {"max_depth": range(2,10),
              "learning_rate": np.arange(0.01, 0.25, 0.02),
@@ -354,29 +559,18 @@ def model_data(data, target_column, validation_size, test_size, estimator):
               "reg_alpha": np.arange(0.1,1.1,0.1),
               "reg_lambda": np.arange(0.1,1.1,0.1)}
 
-        fit_params = {'eval_set': [(features_train_pca, target_train),
-                     (features_test_pca, target_test)],
+        fit_params = {'eval_set': [(features_train, target_train),
+                     (features_test, target_test)],
                      'eval_metric': 'rmse',
                      'early_stopping_rounds': 10,
                      'verbose': False
                      }
 
-        features_train = imputer.fit_transform(features_train)
-        features_test = imputer.transform(features_test)
-
-        features_train = standard_scaler.fit_transform(features_train)
-        features_test = standard_scaler.transform(features_test)
-
-        # Use 45 PCs, as that tested well earlier
-        pca = PCA(n_components=45, random_state=RANDOM_STATE)
-        features_train = pca.fit_transform(features_train)
-        features_test = pca.transform(features_test)
-
     else:
         raise ValueError("Value of `estimator` not recognized.\
             Please choose one of 'ElasticNet', 'kNN', or 'XGBoost'.")
 
-    # Build the workflow/pipeline and tune all parameters
+    # Build the workflow/pipeline and train + tune estimators
     # Can't use XGBoost in sklearn Pipeline effectively
     if estimator != 'XGBoost':
         workflow = Pipeline([('imputer', imputer), ('scaler', scaler), 
@@ -387,16 +581,17 @@ def model_data(data, target_column, validation_size, test_size, estimator):
             cv = calculate_split_fractions(validation_size, test_size), 
             iid=False,
             random_state=RANDOM_STATE,
-            verbose=1)
-
+            verbose=1, n_jobs=-1)
 
     else:
+        print("Setting up paramater_searcher for XGBoost...")
         parameter_searcher = RandomizedSearchCV(reg, param_dist, 
             n_iter = 20,
             cv = calculate_split_fractions(validation_size, test_size), 
             iid=False,
             random_state=RANDOM_STATE,
-            verbose=1)
+            verbose=1, n_jobs=-1)
+
 
     # Report on results of random search
     best_reg = parameter_searcher.fit(features_train, target_train,
@@ -409,7 +604,7 @@ def model_data(data, target_column, validation_size, test_size, estimator):
 
     # Predict data and evaluate using R^2 evaluation with the test data
     predictions = best_reg.predict(features_test)
-    print(f"R^2 score on test data of best estimator: {r2_score(target_test, 
-        predictions)}")
+    print(f"R^2 score on test data of best estimator: {r2_score(target_test, predictions)}")
 
 
+    return r2_score(target_test, predictions)
