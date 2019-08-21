@@ -429,7 +429,7 @@ def state_level_choropleth(data, target_column, train_size=0.6,
 
 
 def model_data(data, target_column, 
-    validation_size=0.2, test_size=0.2, estimator, n_pcs_xgb=64):
+    validation_size, test_size, estimator, n_pcs_xgb=64):
     '''
     Builds and runs the following pipeline through a randomized search
     parameter optimizer (sklearn's RandomizedSearchCV):
@@ -473,11 +473,6 @@ def model_data(data, target_column,
     R^2 score on the test data as a float. Also reports out on the results of training, parameters ultimately used by printing to console..
     '''
     
-    # Remove 'state' column if it's in there - we can't model those strings
-    if 'state' in data.columns:
-        print("Dropping the 'state' column...")
-        data = data.drop(columns=['state'])
-
     # Split into training and testing data
     features_train, features_test, target_train, target_test =\
     split_data(data, target_column,
@@ -509,7 +504,7 @@ def model_data(data, target_column,
     if estimator == 'ElasticNet':
         reg = ElasticNet(random_state=RANDOM_STATE, selection='random')
 
-        param_dist = {"pca__n_components": range(31,59),
+        param_dist = {"pca__n_components": range(34,95),
               "regressor__alpha": np.arange(0.1,1.1,0.1),
               "regressor__l1_ratio": np.arange(0.0,1.1,0.1),
               "regressor__max_iter": range(1000, 10000, 1000)}
