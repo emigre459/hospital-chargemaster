@@ -626,6 +626,13 @@ def interpret_top_components(data, estimator, num_top_components=5):
     allow for interpreting PC-based model importances/coeffecients in terms
     of feature-space variables
 
+    Recommended usage is 
+    interpret_top_components(feature_matrix.drop(columns=['state', 'provider_id',
+    target_col_percentile,
+    target_col]),
+    regressor,
+    num_top_components=5)
+
     NOTE: the returned DataFrame won't be sorted by PC rank, but rather
     by resultant weight. Use groupby() to investigate only a single PC rank
 
