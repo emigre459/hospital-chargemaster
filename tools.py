@@ -429,7 +429,8 @@ def state_level_choropleth(data, target_column, train_size=0.6,
 
 
 def model_data(data, target_column, 
-    validation_size, test_size, estimator, n_pcs_xgb=64):
+    validation_size, test_size, estimator, n_pcs_xgb=64,
+    return_best_estimator=True):
     '''
     Builds and runs the following pipeline through a randomized search
     parameter optimizer (sklearn's RandomizedSearchCV):
@@ -442,6 +443,11 @@ def model_data(data, target_column,
     Note that one of the three models possible (XGBoost) doesn't play well
     with RandomizedSearchCV and Pipelines, so it is less robust in its results
     (because it doesn't search over any parameters other than hyperparameters)
+
+    NOTE: XGBoost is currently broken, will be corrected at some point
+
+    NOTE: kNN consistently showed poor results relative to ElasticNet
+    in initial testing.
 
 
     Parameters
@@ -465,6 +471,10 @@ def model_data(data, target_column,
         Note that prior testing has shown that values of 34 to 95 
         correspond to 75% to 99% explained variance, resp. The default
         of 64 corresponds to 95% explained variance
+
+    return_best_estimator: bool. If True, returns the best fitted 
+        regressor object so it can be further investigated and used.
+        If False, returns the R^2 score.
 
 
 
@@ -513,7 +523,7 @@ def model_data(data, target_column,
     elif estimator == 'kNN':
         reg = KNeighborsRegressor(p=2, n_jobs=4)
 
-        param_dist = {"pca__n_components": range(31,59),
+        param_dist = {"pca__n_components": range(34,95),
               "regressor__n_neighbors": range(2,100),
               "regressor__weights": ['uniform', 'distance'],
              'regressor__metric': ['euclidean', 'minkowski']}
@@ -544,6 +554,8 @@ def model_data(data, target_column,
         print(f"`features_test` now has shape {features_test.shape}")
 
 
+        # Distributions adapted partly from 
+        # https://www.kaggle.com/tilii7/hyperparameter-grid-search-with-xgboost
         param_dist = {"max_depth": range(2,10),
              "learning_rate": np.arange(0.01, 0.25, 0.02),
              "n_estimators": range(50,500, 25),
@@ -602,4 +614,65 @@ def model_data(data, target_column,
     print(f"R^2 score on test data of best estimator: {r2_score(target_test, predictions)}")
 
 
-    return r2_score(target_test, predictions)
+    return best_reg
+
+
+def interpret_top_components(data, estimator, num_top_components=5):
+    '''
+    Takes a Pipeline that includes a fitted PCA object and a trained 
+    linear model and returns the top principal components (by model 
+    coefficient) and their top weights as original feature names.
+    The top components and weights indicate importance to the PCA and thus
+    allow for interpreting PC-based model importances/coeffecients in terms
+    of feature-space variables
+
+    NOTE: the returned DataFrame won't be sorted by PC rank, but rather
+    by resultant weight. Use groupby() to investigate only a single PC rank
+
+    Parameters
+    ----------
+    data: pandas DataFrame. The same DataFrame used in model_data() should
+        be used here BUT the target column should be dropped too.
+
+    estimator: pipeline-based estimator with PCA and a linear model, 
+    at the very least. The PCA element must be named 'pca' and the 
+    model in the Pipeline must be named 'regressor'
+
+    num_top_components: int. Indicates how many of the highest-ranked 
+        PCs (by model weight) you want to investigate.
+
+
+
+    Returns
+    -------
+    pandas DataFrame with columns ['Principal Component Number', 
+    'Feature Name', 'Weight']. Note that Principal Component Number
+    is essentially a ranking: lower numbers indicate higher model weights.
+    Also note that 'Weight' is the product of the linear model weight for the
+    relevant PC and the individual PC weight of that feature.
+    '''
+
+    pc_components = pd.DataFrame(estimator['pca'].components_, 
+        columns = data.columns)
+
+    coeffs = pd.Series(estimator['regressor'].coef_)
+    coeffs = coeffs.loc[coeffs.abs().sort_values(ascending=False).index]
+
+
+    # Multiply PC component weights by relevant top model coefficients
+    # then rename PCs by their rank
+    # then rename the index column produced from reset_index() to Feature Name
+    # then melt so that each original feature weight for a given PC has its own row
+    pc_interpret_results = \
+    (pc_components.transpose() * coeffs).loc[:, coeffs[:num_top_components]\
+    .index].reset_index()\
+    .rename(columns={value: str(i+1) for i,value in enumerate(coeffs.index)})\
+    .rename(columns={'index': 'Feature Name'})\
+    .melt(id_vars=['Feature Name'], var_name='PC Model Importance Rank', value_name='Weight')
+
+    # Sort by absolute value of weight so we don't ignore large negative values
+    pc_interpret_results = \
+    pc_interpret_results.loc[pc_interpret_results['Weight'].abs().sort_values(ascending=False).index]
+
+    return pc_interpret_results
+
