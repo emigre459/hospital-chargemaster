@@ -531,7 +531,7 @@ def model_data(data, target_column,
 
         param_dist = {"pca__n_components": range(34,95),
               "regressor__alpha": np.arange(0.1,1.1,0.1),
-              "regressor__l1_ratio": np.arange(0.0,1.1,0.1),
+              "regressor__l1_ratio": np.arange(0.1,1.1,0.1),
               "regressor__max_iter": range(1000, 10000, 1000)}
 
 
