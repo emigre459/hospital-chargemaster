@@ -641,11 +641,12 @@ def model_data(data, target_column,
     return best_reg
 
 
-def interpret_top_components(data, estimator, num_top_components=5):
+def interpret_top_components(data, estimator, num_top_components=5,
+    return_coeffs = False):
     '''
     Takes a Pipeline that includes a fitted PCA object and a trained 
     linear model and returns the top principal components (by model 
-    coefficient) and their top weights as original feature names.
+    coefficient) and their weights associated with the original feature names.
     The top components and weights indicate importance to the PCA and thus
     allow for interpreting PC-based model importances/coeffecients in terms
     of feature-space variables
@@ -672,6 +673,9 @@ def interpret_top_components(data, estimator, num_top_components=5):
     num_top_components: int. Indicates how many of the highest-ranked 
         PCs (by model weight) you want to investigate.
 
+    return_coeffs: bool. If True, returns a tuple of the form
+        (results_df, model coefficients used)
+
 
 
     Returns
@@ -683,17 +687,21 @@ def interpret_top_components(data, estimator, num_top_components=5):
     relevant PC and the individual PC weight of that feature.
     '''
 
+    # Pull in the weights of each PC and assign the relevant original
+    # feature name to each
     pc_components = pd.DataFrame(estimator['pca'].components_, 
         columns = data.columns)
 
     coeffs = pd.Series(estimator['regressor'].coef_)
+    # Sort coeffs so the highest absolute value coefficients are first
     coeffs = coeffs.loc[coeffs.abs().sort_values(ascending=False).index]
 
 
     # Multiply PC component weights by relevant top model coefficients
     # then rename PCs by their rank
     # then rename the index column produced from reset_index() to Feature Name
-    # then melt so that each original feature weight for a given PC has its own row
+    # then melt so that each original feature weight for a given PC 
+        # has its own row
     pc_interpret_results = \
     (pc_components.transpose() * coeffs).loc[:, coeffs[:num_top_components]\
     .index].reset_index()\
@@ -705,5 +713,8 @@ def interpret_top_components(data, estimator, num_top_components=5):
     pc_interpret_results = \
     pc_interpret_results.loc[pc_interpret_results['Weight'].abs().sort_values(ascending=False).index]
 
-    return pc_interpret_results
+    if return_coeffs:
+        return pc_interpret_results, coeffs[:num_top_components]
+    else:
+        return pc_interpret_results
 
