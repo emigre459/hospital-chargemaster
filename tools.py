@@ -308,12 +308,13 @@ def corr_to_target(features_train, target_train, title=None, file=None,
     plt.show();
 
     if print_corrs:
-        print(data.corr()[target_column].sort_values(ascending=False)\
-                    .drop(target_column))
+        print(features_train.corr()[target_column]\
+            .sort_values(ascending=False)\
+            .drop(target_column))
 
 
 def map_each_hospital(features_train, target_train=None, quantile=1.0, 
-    quantile_direction='top', labels={}, save_file=None):
+    quantile_direction='bottom', labels={}, save_file=None):
     '''
     Map out the locations of hospitals, with marker sizes and colors 
     reflecting the size of the target variable. Map is interactive.
@@ -367,7 +368,7 @@ def map_each_hospital(features_train, target_train=None, quantile=1.0,
 
 
     # Combine features and target, if target is specified
-    if target_train:
+    if target_train is not None:
         target_column = target_train.name
 
         # Combine target and features
@@ -399,7 +400,7 @@ def map_each_hospital(features_train, target_train=None, quantile=1.0,
             color=target_column, size=target_column,
             size_max=7, zoom=2, opacity=0.25,
             color_continuous_scale=px.colors.diverging.Portland,
-            color_continuous_midpoint=data.quantile(0.5)[target_column],
+            color_continuous_midpoint=target_train.quantile(0.5),
             labels=labels, title=title)
 
      # No target data provided
@@ -414,7 +415,8 @@ def map_each_hospital(features_train, target_train=None, quantile=1.0,
     fig.show()
 
 
-def state_level_choropleth(data, target_column, statistic='mean', labels={}):
+def state_level_choropleth(features_train, target_train, 
+    statistic='mean', labels={}):
     '''
     Create a colored choropleth map (heat map) at the state level 
     that colors states based upon the aggregated `statistic` value
