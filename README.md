@@ -52,7 +52,7 @@ Here I provide some brief descriptions for the versioned datasets used in this w
 4. Healthcare Associated Infections - Hospital
 	* Information on infections that occur while the patients are in the hospital
 5. Unplanned Hospital Visits - Hospital
-	* Hospital-reported data for the hospital return days (or excess days in acute care [EDAC]), indicating 
+	* Hospital-reported data for the hospital return days (or excess days in acute care [EDAC]), indicating amounts of time required for patients to return to a hospital as a result of readmission for a previously-treated issue
 6. Hospital Readmissions Reduction Program
 	* This extends the Unplanned Hospital Visits data by normalizing readmission rates to a statisically-derived similar average-performing hospital (higher values meaning the hospital in question has more readmissions in a 30-day period than is expected nationally). 
 7. Medicare Spending Per Beneficiary – Hospital Additional Decimal Places

@@ -64,68 +64,6 @@ def is_sparse(data):
 
     return (data == 0).sum().sum() / (len(data) * len(data.columns)) >= 0.50
 
-def view_target_distribution(data, target_column, train_size=0.6):
-    '''
-    Plots the target variable distribution for the training,
-    testing, and full datasets. This allows for a visual
-    understanding of any obvious differences between the samples.
-
-
-    Parameters
-    ----------
-    data: pandas DataFrame of all features + target
-    
-    target_column: str. Column name of the target variable in data
-
-    train_size: float. Fraction of the full dataset you intend to use 
-        for training. Must be in the bounds (0.0,1.0)
-
-
-    Returns
-    -------
-    Nothing, just plots
-    '''
-
-    _, _, target_train, target_test = split_data(data, 
-        target_column, train_size)
-
-    fig, axes = plt.subplots(figsize=(5,7), nrows=3, sharex=True)
-    #fig.suptitle('Distributions of Target Variable')
-
-    target = target_train.append(target_test)
-
-    plots = {'Training Data': target_train, 'Testing Data': target_test, 'All Data': target}
-
-
-    for i, target_types in enumerate(plots.keys()):
-        sns.distplot(plots[target_types], ax=axes[i], axlabel='target value')
-        axes[i].set(title=target_types)
-        
-
-    #plt.subplots_adjust(top=0.5)
-    plt.tight_layout()
-    plt.show();
-
-
-def long_lat_extract(row):
-    '''
-    Extracts longitude and latitude from a shapely Point object
-    and returns them as DataFrame columns. Intended to be used via
-    pandas.Series.apply(axis=1, result_type='expand').
-    
-    Inputs
-    ------
-    row: GeoPandas dataframe row, that at a minimum must have a
-        'location' column that contains a shapely Point object
-    
-    
-    Returns
-    -------
-    tuple of floats of the form (longitude, latitude)
-    '''
-    
-    return row['location'].coords[0]
-
 
 def calculate_split_fractions(validation_size, test_size, print_folds=False):
     '''
@@ -214,7 +152,113 @@ def split_data(data, target_column, train_size=0.6):
         train_size=train_size, random_state=RANDOM_STATE)
 
 
-def corr_to_target(data, target_column, train_size=0.6, title=None, file=None,
+def impute_data(data, target_column, n_iterations, train_size=0.6):
+    '''
+    Takes a pandas DataFrame, drops any rows that have null values for the 
+    target variable, splits the data into training and test sets, and uses multiple imputation to fill in missing values for the features.
+
+
+    Parameters
+    ----------
+    data: pandas DataFrame of all features + target
+    
+    target_column: str. Column name of the target variable in data
+
+    train_size: float. Fraction of the full dataset you intend to use 
+        for training. Must be in the bounds (0.0,1.0)
+
+
+    Returns
+    -------
+    4-tuple of form (features_train, features_test, target_train,
+        target_test)
+    '''
+
+    # Split into training and test sets so that imputation criteria for 
+    # test set doesn't leak into training set and vice versa
+
+    features_train, features_test, target_train, target_test = \
+    split_data(data, target_column, train_size)
+
+    imputer = IterativeImputer(sample_posterior=True,
+                          max_iter=n_iterations,
+                          add_indicator=False,
+                          random_state=RANDOM_STATE)
+
+    features_train_imputed = pd.DataFrame(data=\
+        imputer.fit_transform(features_train),
+        columns=features_train.columns,
+        index=features_train.index)
+
+    # Note that this is transform() only, as it's the test data
+    features_test_imputed = pd.DataFrame(data=imputer.transform(features_test),
+                                   columns=features_test.columns,
+                                   index=features_test.index)
+
+
+    return [features_train_imputed, features_test_imputed, \
+    target_train, target_test]
+
+def view_target_distribution(target_train, target_test):
+    '''
+    Plots the target variable distribution for the training,
+    testing, and full datasets. This allows for a visual
+    understanding of any obvious differences between the samples.
+
+
+    Parameters
+    ----------
+    target_train: pandas Series of target values (training data only)
+
+    target_test: pandas Series of target values (testing data only)
+
+
+    Returns
+    -------
+    Nothing, just plots
+    '''
+
+    fig, axes = plt.subplots(figsize=(5,7), nrows=3, sharex=True)
+    #fig.suptitle('Distributions of Target Variable')
+
+    target = target_train.append(target_test)
+
+    plots = {'Training Data': target_train, 'Testing Data': target_test,
+    'All Data': target}
+
+
+    for i, target_types in enumerate(plots.keys()):
+        sns.distplot(plots[target_types], ax=axes[i], axlabel='target value')
+        axes[i].set(title=target_types)
+        
+
+    #plt.subplots_adjust(top=0.5)
+    plt.tight_layout()
+    plt.show();
+
+
+def long_lat_extract(row):
+    '''
+    Extracts longitude and latitude from a shapely Point object
+    and returns them as DataFrame columns. Intended to be used via
+    pandas.Series.apply(axis=1, result_type='expand').
+    
+    Inputs
+    ------
+    row: GeoPandas dataframe row, that at a minimum must have a
+        'location' column that contains a shapely Point object
+    
+    
+    Returns
+    -------
+    tuple of floats of the form (longitude, latitude)
+    '''
+    
+    return row['location'].coords[0]
+
+
+
+def corr_to_target(features_train, target_train, title=None, file=None,
     print_corrs=True):
     '''
     Produces a sorted plot of correlations of feature values to the target variable, 
@@ -224,12 +268,9 @@ def corr_to_target(data, target_column, train_size=0.6, title=None, file=None,
     
     Parameters
     ----------
-    data: pandas DataFrame of all features + target
+    features_train: pandas DataFrame of all features (training data only)
     
-    target_column: str. Column name of the target variable in data
-
-    train_size: float. Fraction of the full dataset you intend to use 
-        for training. Must be in the bounds (0.0,1.0)
+    target_train: pandas Series of target values (training data only)
     
     title: str. Title to put on the plot
     
@@ -246,11 +287,8 @@ def corr_to_target(data, target_column, train_size=0.6, title=None, file=None,
     Nothing returned, only plots
     
     '''
-    # Split out data so you're only looking at training data for inspiration
-    # and test data is left until final evaluation
-    features_train, _, target_train, _ = split_data(data, 
-        target_column, train_size)
 
+    target_column = target_train.name
 
     plt.figure(figsize=(4,6))
     sns.set(font_scale=1)
@@ -274,7 +312,7 @@ def corr_to_target(data, target_column, train_size=0.6, title=None, file=None,
                     .drop(target_column))
 
 
-def map_each_hospital(data, target_column=None, train_size=0.6, quantile=1.0, 
+def map_each_hospital(features_train, target_train=None, quantile=1.0, 
     quantile_direction='top', labels={}, save_file=None):
     '''
     Map out the locations of hospitals, with marker sizes and colors 
@@ -283,15 +321,9 @@ def map_each_hospital(data, target_column=None, train_size=0.6, quantile=1.0,
 
     Parameters
     ----------
-    data: pandas DataFrame of all features + target
+    features_train: pandas DataFrame of all features (training data only)
     
-    target_column: str. Column name of the target variable in data. If None,
-        marker sizes will be uniform instead of scaled to target_column values.
-        Note also that, if None, all data are shown, not a training subset.
-
-    train_size: float. Fraction of the full dataset you intend to use 
-        for training. Must be in the bounds (0.0,1.0). Ignored if 
-        target_column is None.
+    target_train: pandas Series of target values (training data only)
 
     quantile: float in range [0.0, 1.0]. Indicates what top % of 
         the target data you want displayed (locations outside of
@@ -320,25 +352,28 @@ def map_each_hospital(data, target_column=None, train_size=0.6, quantile=1.0,
     Plots an interactive (plotly-driven) map of all locations with
     marker sizes and color corresponding to the target variable values.
 
-    '''
+    '''    
 
     # Pass in my public mapbox token for contextual mapping
     px.set_mapbox_access_token(open("secure_keys/public.mapbox_token").read())
 
     # Setup figure title
     if quantile == 1.0:
-        title = "All Training Data"
+        title = "All Data"
     elif quantile_direction == 'top':
         title = f"Top {int(quantile * 100)}%"
     else:
         title = f"Bottom {int(quantile * 100)}%"
 
-    if target_column:
-        features_train, _, target_train, _ = split_data(data, 
-            target_column, train_size)
+
+    # Combine features and target, if target is specified
+    if target_train:
+        target_column = target_train.name
 
         # Combine target and features
         features_train[target_column] = target_train
+
+
 
         # 'top' -> at or above
         if quantile_direction == 'top':
@@ -358,7 +393,6 @@ def map_each_hospital(data, target_column=None, train_size=0.6, quantile=1.0,
 
         else: raise ValueError("Invalid value for quantile_direction. Use 'top' or 'bottom'.")
 
-
         # Map only top X% of target value with color scale midpoint at median of whole dataset
         fig = px.scatter_mapbox(top_target_quantile, 
             lat="Latitude", lon="Longitude", 
@@ -368,11 +402,11 @@ def map_each_hospital(data, target_column=None, train_size=0.6, quantile=1.0,
             color_continuous_midpoint=data.quantile(0.5)[target_column],
             labels=labels, title=title)
 
-    # target_column is None
-    else:        
-        fig = px.scatter_mapbox(data, 
-            lat="Latitude", lon="Longitude", 
-            zoom=2, opacity=0.25, labels=labels, title=title)
+     # No target data provided
+    else:
+        fig = px.scatter_mapbox(features_train, 
+            lat="Latitude", lon="Longitude", zoom=2,
+            labels=labels, title=title, opacity=0.25)
 
     if save_file:
         fig.write_html(save_file)
@@ -380,8 +414,7 @@ def map_each_hospital(data, target_column=None, train_size=0.6, quantile=1.0,
     fig.show()
 
 
-def state_level_choropleth(data, target_column, train_size=0.6, 
-    statistic='mean', labels={}):
+def state_level_choropleth(data, target_column, statistic='mean', labels={}):
     '''
     Create a colored choropleth map (heat map) at the state level 
     that colors states based upon the aggregated `statistic` value
@@ -390,9 +423,9 @@ def state_level_choropleth(data, target_column, train_size=0.6,
 
     Parameters
     ----------
-    data: pandas DataFrame of all features + target
+    features_train: pandas DataFrame of all features (training data only)
     
-    target_column: str. Column name of the target variable in data
+    target_train: pandas Series of target values (training data only)
 
     statistic: str. Can be either "mean" or "median". Dictates what
         descriptive statistic is used for coloring the states in the
@@ -412,11 +445,10 @@ def state_level_choropleth(data, target_column, train_size=0.6,
 
     '''
 
+    target_column = target_train.name
+
     # Pass in my public mapbox token for contextual mapping
     px.set_mapbox_access_token(open("secure_keys/public.mapbox_token").read())
-
-    features_train, _, target_train, _ = split_data(data, 
-            target_column, train_size)
 
     # Combine target and features
     features_train[target_column] = target_train
@@ -467,7 +499,10 @@ def model_data(data, target_column,
 
     Parameters
     ----------
-    data: pandas DataFrame of all features (only numeric ones) + target
+    data: pandas DataFrame of all features (only numeric ones) + target. NOTE 
+    THAT THIS IS NOT JUST features_train. As we'll be doing k-fold 
+    cross-validation here, we'll need the flexibility to split and re-split 
+    the data.
     
     target_column: str. Column name of the target variable in data
 
