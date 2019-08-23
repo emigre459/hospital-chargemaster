@@ -13,7 +13,7 @@ from sklearn.impute import IterativeImputer
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 
-from sklearn.linear_model import ElasticNet
+from sklearn.linear_model import ElasticNet, Ridge
 from sklearn.neighbors import KNeighborsRegressor
 from xgboost.sklearn import XGBRegressor
 
@@ -477,8 +477,8 @@ def model_data(data, target_column,
     test_size: float. Fraction of the full dataset you intend to use 
         for final testing. Must be in the bounds (0.0,1.0)
 
-    estimator: str. Can be ElasticNet, kNN, or XGBoost. Indicates the type of 
-        model you want to train
+    estimator: str. Can be ElasticNet, Ridge, kNN, or XGBoost. Indicates 
+        the type of model you want to train
 
     n_pcs_xgb: int. Dictates how many principal components should be used in
         model training and testing for the XGBoost estimator, since that one
@@ -497,6 +497,8 @@ def model_data(data, target_column,
     -------
     R^2 score on the test data as a float. Also reports out on the results of training, parameters ultimately used by printing to console..
     '''
+
+    print(f"Modeling {target_column}...\n")
     
     # Split into training and testing data
     features_train, features_test, target_train, target_test =\
@@ -534,6 +536,13 @@ def model_data(data, target_column,
               "regressor__l1_ratio": np.arange(0.1,1.1,0.1),
               "regressor__max_iter": range(1000, 10000, 1000)}
 
+
+    elif estimator == 'Ridge':
+        reg = Ridge(random_state=RANDOM_STATE)
+
+        param_dist = {"pca__n_components": range(34,95),
+              "regressor__alpha": np.arange(0.1,1.1,0.1),
+              "regressor__max_iter": range(1000, 10000, 1000)}
 
     elif estimator == 'kNN':
         reg = KNeighborsRegressor(p=2, n_jobs=4)
@@ -590,7 +599,7 @@ def model_data(data, target_column,
 
     else:
         raise ValueError("Value of `estimator` not recognized.\
-            Please choose one of 'ElasticNet', 'kNN', or 'XGBoost'.")
+            Please choose one of 'ElasticNet', 'Ridge', 'kNN', or 'XGBoost'.")
 
     # Build the workflow/pipeline and train + tune estimators
     # Can't use XGBoost in sklearn Pipeline effectively
