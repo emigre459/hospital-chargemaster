@@ -123,7 +123,7 @@ def calculate_split_fractions(validation_size, test_size, print_folds=False):
     return result
 
 
-def split_data(data, target_column, train_size=0.6):
+def split_data(data, target_column, train_size=0.6, validation_size=0.2):
     '''
     Convenience function that takes the full features + target data and 
     splits it up into training and testing features and target.
@@ -149,7 +149,7 @@ def split_data(data, target_column, train_size=0.6):
     .drop(columns=[target_column])
 
     return train_test_split(features, target, 
-        train_size=train_size, random_state=RANDOM_STATE)
+        train_size=train_size + validation_size, random_state=RANDOM_STATE)
 
 
 def impute_data(data, target_column, n_iterations, train_size=0.6):
@@ -294,9 +294,10 @@ def corr_to_target(features_train, target_train, title=None, file=None,
     sns.set(font_scale=1)
 
     # Merge target_train and feature_train
-    features_train[target_column] = target_train
+    data = features_train.copy()
+    data[target_column] = target_train
     
-    sns.heatmap(features_train.corr()[[target_column]].sort_values(target_column,
+    sns.heatmap(data.corr()[[target_column]].sort_values(target_column,
         ascending=False)[1:],
     annot=True,
     cmap='coolwarm')
@@ -308,7 +309,7 @@ def corr_to_target(features_train, target_train, title=None, file=None,
     plt.show();
 
     if print_corrs:
-        print(features_train.corr()[target_column]\
+        print(data.corr()[target_column]\
             .sort_values(ascending=False)\
             .drop(target_column))
 
@@ -372,25 +373,26 @@ def map_each_hospital(features_train, target_train=None, quantile=1.0,
         target_column = target_train.name
 
         # Combine target and features
-        features_train[target_column] = target_train
+        data = features_train.copy()
+        data[target_column] = target_train
 
 
 
         # 'top' -> at or above
         if quantile_direction == 'top':
             print(f"Only showing values at or above \
-            {features_train.quantile(1-quantile)[target_column]}")
+            {data.quantile(1-quantile)[target_column]}")
 
-            top_target_quantile = features_train[features_train[target_column] >= \
-            features_train.quantile(1-quantile)[target_column]]
+            top_target_quantile = data[features_train[target_column] >= \
+            data.quantile(1-quantile)[target_column]]
 
         # Assume when a large quantile is given, users wants "this % and lower"
         elif quantile_direction == 'bottom':
             print(f"Only showing values at or below \
-            {features_train.quantile(quantile)[target_column]}")
+            {data.quantile(quantile)[target_column]}")
 
-            top_target_quantile = features_train[features_train[target_column]\
-             <= features_train.quantile(quantile)[target_column]]
+            top_target_quantile = data[features_train[target_column]\
+             <= data.quantile(quantile)[target_column]]
 
         else: raise ValueError("Invalid value for quantile_direction. Use 'top' or 'bottom'.")
 
@@ -405,7 +407,7 @@ def map_each_hospital(features_train, target_train=None, quantile=1.0,
 
      # No target data provided
     else:
-        fig = px.scatter_mapbox(features_train, 
+        fig = px.scatter_mapbox(data, 
             lat="Latitude", lon="Longitude", zoom=2,
             labels=labels, title=title, opacity=0.25)
 
@@ -453,14 +455,15 @@ def state_level_choropleth(features_train, target_train,
     px.set_mapbox_access_token(open("secure_keys/public.mapbox_token").read())
 
     # Combine target and features
-    features_train[target_column] = target_train
+    data = features_train.copy()
+    data[target_column] = target_train
 
     if statistic == 'mean':
-        data_grouped = features_train.groupby('state', as_index=False).mean()
+        data_grouped = data.groupby('state', as_index=False).mean()
         title = "Mean Value by State"
 
     elif statistic == 'median':
-        data_grouped = features_train.groupby('state', as_index=False).median()
+        data_grouped = data.groupby('state', as_index=False).median()
         title = "Median Value by State"
 
     else:
