@@ -383,7 +383,7 @@ def map_each_hospital(features_train, target_train=None, quantile=1.0,
             print(f"Only showing values at or above \
             {data.quantile(1-quantile)[target_column]}")
 
-            top_target_quantile = data[features_train[target_column] >= \
+            top_target_quantile = data[data[target_column] >= \
             data.quantile(1-quantile)[target_column]]
 
         # Assume when a large quantile is given, users wants "this % and lower"
@@ -391,7 +391,7 @@ def map_each_hospital(features_train, target_train=None, quantile=1.0,
             print(f"Only showing values at or below \
             {data.quantile(quantile)[target_column]}")
 
-            top_target_quantile = data[features_train[target_column]\
+            top_target_quantile = data[data[target_column]\
              <= data.quantile(quantile)[target_column]]
 
         else: raise ValueError("Invalid value for quantile_direction. Use 'top' or 'bottom'.")
@@ -418,7 +418,7 @@ def map_each_hospital(features_train, target_train=None, quantile=1.0,
 
 
 def state_level_choropleth(features_train, target_train, 
-    statistic='mean', labels={}):
+    statistic='mean', labels={}, midpoint=None):
     '''
     Create a colored choropleth map (heat map) at the state level 
     that colors states based upon the aggregated `statistic` value
@@ -440,6 +440,9 @@ def state_level_choropleth(features_train, target_train,
         parameter allows this to be overridden. The keys of this dict should 
         correspond to column names, and the values should correspond to the 
         desired label to be displayed (e.g. {target_column: 'Heart Attacks'})
+
+    midpoint: float. If set, indicates the value of target_train that you
+        want as the midpoint of the color scale used
 
 
     Returns
@@ -475,6 +478,7 @@ def state_level_choropleth(features_train, target_train,
         locations='state', locationmode='USA-states',
         color=target_column, hover_data=[target_column],
         color_continuous_scale=px.colors.diverging.Portland,
+        color_continuous_midpoint=midpoint,
         scope='usa',
         title=title, labels=labels)
     fig.show()
