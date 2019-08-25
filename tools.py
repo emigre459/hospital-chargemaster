@@ -315,7 +315,7 @@ def corr_to_target(features_train, target_train, title=None, file=None,
 
 
 def map_each_hospital(features_train, target_train=None, quantile=1.0, 
-    quantile_direction='bottom', labels={}, save_file=None):
+    quantile_direction='bottom', labels={}, midpoint=None, save_file=None):
     '''
     Map out the locations of hospitals, with marker sizes and colors 
     reflecting the size of the target variable. Map is interactive.
@@ -344,6 +344,9 @@ def map_each_hospital(features_train, target_train=None, quantile=1.0,
         parameter allows this to be overridden. The keys of this dict should 
         correspond to column names, and the values should correspond to the 
         desired label to be displayed (e.g. {target_column: 'Heart Attacks'})
+
+    midpoint: float. If set, indicates the value of target_train that you
+        want as the midpoint of the color scale used
 
     save_file: str. Should provide a filepath for the interactive HTML 
         to be saved. If None, file is not saved.
@@ -397,12 +400,14 @@ def map_each_hospital(features_train, target_train=None, quantile=1.0,
         else: raise ValueError("Invalid value for quantile_direction. Use 'top' or 'bottom'.")
 
         # Map only top X% of target value with color scale midpoint at median of whole dataset
+        if midpoint is None: midpoint = target_train.quantile(0.5)
+
         fig = px.scatter_mapbox(top_target_quantile, 
             lat="Latitude", lon="Longitude", 
             color=target_column, size=target_column,
             size_max=7, zoom=2, opacity=0.25,
             color_continuous_scale=px.colors.diverging.Portland,
-            color_continuous_midpoint=target_train.quantile(0.5),
+            color_continuous_midpoint=midpoint,
             labels=labels, title=title)
 
      # No target data provided
