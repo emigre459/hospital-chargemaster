@@ -315,7 +315,8 @@ def corr_to_target(features_train, target_train, title=None, file=None,
 
 
 def map_each_hospital(features_train, target_train=None, quantile=1.0, 
-    quantile_direction='bottom', labels={}, midpoint=None, save_file=None):
+    quantile_direction='bottom', labels={}, midpoint=None, save_file=None,
+    make_plot=True):
     '''
     Map out the locations of hospitals, with marker sizes and colors 
     reflecting the size of the target variable. Map is interactive.
@@ -351,16 +352,20 @@ def map_each_hospital(features_train, target_train=None, quantile=1.0,
     save_file: str. Should provide a filepath for the interactive HTML 
         to be saved. If None, file is not saved.
 
+    make_plot: bool. If True, automatically plots the resultant figure
+
 
     Returns
     -------
     Plots an interactive (plotly-driven) map of all locations with
-    marker sizes and color corresponding to the target variable values.
+    marker sizes and color corresponding to the target variable values. Also returns a plotly go.Figure object
 
     '''    
 
     # Pass in my public mapbox token for contextual mapping
     px.set_mapbox_access_token(open("secure_keys/public.mapbox_token").read())
+
+    data = features_train.copy()
 
     # Setup figure title
     if quantile == 1.0:
@@ -376,7 +381,6 @@ def map_each_hospital(features_train, target_train=None, quantile=1.0,
         target_column = target_train.name
 
         # Combine target and features
-        data = features_train.copy()
         data[target_column] = target_train
 
 
@@ -419,7 +423,9 @@ def map_each_hospital(features_train, target_train=None, quantile=1.0,
     if save_file:
         fig.write_html(save_file)
 
-    fig.show()
+    if make_plot: fig.show()
+
+    return fig
 
 
 def state_level_choropleth(features_train, target_train, 
