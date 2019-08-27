@@ -2,3 +2,4 @@ __pycache__
 *.log
 .DS_store
 data/all_hospitals-latest.csv
+dask-worker-space/

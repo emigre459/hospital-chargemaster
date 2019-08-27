@@ -237,16 +237,19 @@ def view_target_distribution(target_train, target_test):
     plt.show();
 
 
-def long_lat_extract(row):
+def long_lat_extract(row, geometry_title='location'):
     '''
     Extracts longitude and latitude from a shapely Point object
     and returns them as DataFrame columns. Intended to be used via
-    pandas.Series.apply(axis=1, result_type='expand').
+    pandas.DataFrame.apply(axis=1, result_type='expand').
     
     Inputs
     ------
     row: GeoPandas dataframe row, that at a minimum must have a
-        'location' column that contains a shapely Point object
+        column that contains a shapely Point object
+
+    geometry_title: str. Name of the column that is the geometry of the 
+        GeoDataFrame
     
     
     Returns
@@ -254,7 +257,7 @@ def long_lat_extract(row):
     tuple of floats of the form (longitude, latitude)
     '''
     
-    return row['location'].coords[0]
+    return row[geometry_title].coords[0]
 
 
 
