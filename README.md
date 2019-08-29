@@ -2,12 +2,13 @@
 
 # Hospital Chargemaster Analysis and Modeling
 
-This is an analysis of publicly-available hospital-level and chargemasters data that uses the Centers for Medicare and Medicaid Services open datasets and the [Dinosaur Dataset](https://vsoch.github.io/datasets/2019/hospital-chargemasters/) its starting points. 
+This is an analysis of publicly-available hospital-level data and (eventually) hospital chargemaster data that uses the Centers for Medicare and Medicaid Services open datasets and the [Dinosaur Dataset](https://vsoch.github.io/datasets/2019/hospital-chargemasters/) as its starting points. 
 
-This project is split into two phases:
+This project is split into multiple phases:
 
-* **Phase I:** working with the well-structured and labeled CMS hospital-level data and determining the most interesting feature to predict and how well it can be modeled with those data alone
-* **Phase II:** adding in the hospital chargemaster data as new features (e.g. the ratio of a given hospital's cost for a given procedure relative to the average or median of all the hospitals for which we have data).
+* **Phase 1:** working with the well-structured and labeled CMS hospital-level data and determining the most interesting feature to predict and how well it can be modeled with those data alone
+* **Phase 1.5:** after doing analysis in Phase 1, it became evident that more datasets beyond chargemasters were necessary (e.g. geolocations of major cities). This phase will focus on adding in those datasets and measuring improvement (if any) of the models for the chosen target variables.
+* **Phase 2:** adding in the hospital chargemaster data as new features (e.g. the ratio of a given hospital's cost for a given procedure relative to the average or median of all the hospitals for which we have data).
 
 ### Table of Contents
 
@@ -15,29 +16,17 @@ This project is split into two phases:
 2. [The Data](#data)
 	1. [CMS-Provided Hospital Data](#hospital_data)
 	2. [Chargemaster Data Collection Process](#charge_data)
+3. [The Analyses](#analysis)
+4. [Related Media](#articles)
 
 
 ## So what are you trying to achieve here?
 
 The US healthcare industry is disturbingly opaque in its pricing and quality of service. It seems to be a market that is not directed by typical economic forces due to a large information asymmetry between the patient and healthcare provider (ever tried to ask your insurance company to commit to how much you'd have to pay for a procedure that isn't 100% covered?). Additionally, there are often significant stresses on the consumer (AKA patient) at the point of purchase, making the decisions less economic in nature and more emotional.
 
-This project and its corresponding repository is intended to try and predict patient quality 
+This project and its corresponding repository is intended to try and predict patient quality of care metrics that are relevant in decided the overall quality of hospital from a patient's perspective (e.g. things like how many deaths occur there every year due to serious post-surgical complications). The hope is that patients could use these results to make more informed decisions about where to seek their healthcare, and that the entire US healthcare industry could be made just a little bit more accountable.
 
 ## What are these data? <a name="data"></a>
-
-As of January 1, 2019, U.S. hospitals (or at least all of those receiving Medicare and Medicaid funding, which is likely all of them) are required to share their price lists for all of their consumables (e.g. 
-hypodermic needles) and procedures (e.g. triple-bypass surgery). However,
- it remains a problem that the data released
-[is not intended for human consumption](https://qz.com/1518545/price-lists-for-the-115-biggest-us-hospitals-new-transparency-law/). 
-
-This repo does the following:
-
-1. Takes the chargemaster data originally gathered by @vsoch in early 2019
-2. Pushes all of the different chargemasters into a single DataFrame (data table)
-3. Cleans it all up
-	* The formats across chargemasters differ quite a bit at times, leading to bad initial parsing
-4. Augments the chargemaster data with hospital metadata for analytical purposes
-5. Links everything together via an sqlite database
 
 ### CMS-Provided Hospital Data <a name="hospital_data"></a>
 
@@ -64,8 +53,24 @@ Here I provide some brief descriptions for the versioned datasets used in this w
 10. Structural Measures - Hospital
 	* A list of hospitals and the structural measures they report (e.g. if they utilize electronic health records systems, AKA EHRs)
 
+### Hospital Chargemaster Data <a name="charge_data"></a>
 
-### How do the chargemaster data get gathered? <a name="charge_data"></a>
+As of January 1, 2019, U.S. hospitals (or at least all of those receiving Medicare and Medicaid funding, which is likely all of them) are required to share their price lists for all of their consumables (e.g. 
+hypodermic needles) and procedures (e.g. triple-bypass surgery). However,
+ it remains a problem that the data released
+[is not intended for human consumption](https://qz.com/1518545/price-lists-for-the-115-biggest-us-hospitals-new-transparency-law/). 
+
+This repo does the following:
+
+1. Takes the chargemaster data originally gathered by @vsoch in early 2019
+2. Pushes all of the different chargemasters into a single DataFrame (data table)
+3. Cleans it all up
+	* The formats across chargemasters differ quite a bit at times, leading to bad initial parsing
+4. Augments the chargemaster data with hospital metadata for analytical purposes
+5. Links everything together via an sqlite database
+
+
+**How do the chargemaster data get gathered?**
 
 #### 1. Get List of Hospital Pages
 
@@ -120,3 +125,14 @@ to the data:
 
  - **charge_type** can be one of standard, average, inpatient, outpatient, drg, or (if more detail is supplied) insured, uninsured, pharmacy, or supply. This is not a gold standard labeling but a best effort. If not specified, I labeled as standard, because this would be a good assumption.
 
+
+## So...what are the results? <a name="analysis"></a>
+
+A lot of work has gone into the analysis thus far (and it is ongoing), so check the [analysis notebook](Analysis.ipynb) for updates.
+
+
+## Can I See the Results Without Looking Through Your Code? <a name="articles"></a>
+
+Sure! Here's what I've written up about this analysis and these data in a way that skips all of the details and gets to the juiciest bits:
+
+1. [*Does Where You Live Affect Your Quality of Hospital Care?*](https://medium.com/swlh/does-where-you-live-affect-your-quality-of-hospital-care-9acaf59a9f99)
